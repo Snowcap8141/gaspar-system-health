@@ -21,7 +21,13 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _diagnosticCts;
     private CancellationTokenSource? _sensorBootstrapCts;
     private bool _toolOperationRunning;
+    private bool _refreshInProgress;
     private string? _activeOperationName;
+    private readonly Dictionary<string, int> _diagnosticCategorySeverity = new();
+    private readonly List<string> _diagnosticSummaryLines = new();
+    private int _diagnosticOkCount;
+    private int _diagnosticWarningCount;
+    private int _diagnosticErrorCount;
 
     public MainWindow()
     {
@@ -39,7 +45,7 @@ public partial class MainWindow : Window
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _refreshTimer.Tick += async (_, _) =>
         {
-            if (_diagnosticCts is null)
+            if (_diagnosticCts is null && !_toolOperationRunning && _sensorBootstrapCts is null)
             {
                 await RefreshDashboardAsync();
             }
@@ -58,6 +64,11 @@ public partial class MainWindow : Window
         MenuUpdateButton.Click += (_, _) => ShowModule("update");
         MenuIntegrityButton.Click += (_, _) => ShowModule("integrity");
         MenuLogButton.Click += (_, _) => ShowModule("log");
+        SystemSettingsButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenSystemSettingsAsync);
+        NetworkSettingsButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenNetworkSettingsAsync);
+        WindowsSecurityButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenWindowsSecurityAsync);
+        InstalledAppsButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenInstalledAppsSettingsAsync);
+        QuickWindowsUpdateButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenWindowsUpdateAsync);
         SystemInfoButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.GetSystemInfoAsync);
         TopProcessesButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.GetTopProcessesAsync);
         CriticalEventsButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.GetCriticalEventsAsync);
@@ -107,6 +118,12 @@ public partial class MainWindow : Window
 
     private async Task RefreshDashboardAsync()
     {
+        if (_refreshInProgress)
+        {
+            return;
+        }
+
+        _refreshInProgress = true;
         try
         {
             SystemSnapshot snapshot = await Task.Run(_probeService.CaptureSnapshot);
@@ -119,6 +136,10 @@ public partial class MainWindow : Window
             AppendLog($"Errore dashboard: {ex.Message}");
             FooterStatusText.Text = "Errore durante l'aggiornamento dashboard.";
         }
+        finally
+        {
+            _refreshInProgress = false;
+        }
     }
 
     private async Task EnsureSensorSupportAsync()
@@ -129,7 +150,7 @@ public partial class MainWindow : Window
         }
 
         _sensorBootstrapCts?.Dispose();
-        _sensorBootstrapCts = new CancellationTokenSource();
+        _sensorBootstrapCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
 
         try
         {
@@ -193,6 +214,7 @@ public partial class MainWindow : Window
         ApplyQuickStatus(DiskStatusDot, DiskStatusText, _diagnosticService.EvaluateDisk(snapshot));
         ApplyQuickStatus(SensorStatusDot, SensorStatusText, _diagnosticService.EvaluateSensors(snapshot));
         ApplyQuickStatus(SecurityStatusDot, SecurityStatusText, _diagnosticService.EvaluateSecurity());
+        ApplyQuickStatus(RebootStatusDot, RebootStatusText, _diagnosticService.EvaluateReboot());
         ApplyQuickStatus(NetworkStatusDot, NetworkStatusText, await _diagnosticService.EvaluateNetworkAsync());
     }
 
@@ -204,6 +226,9 @@ public partial class MainWindow : Window
         }
 
         _diagnosticCts = new CancellationTokenSource();
+        ResetDiagnosticCategoryStates();
+        ResetDiagnosticSummaryUi();
+        _refreshTimer.Stop();
         RunDiagnosticButton.IsEnabled = false;
         DiagnosticProgressBar.Value = 0;
         DiagnosticPercentText.Text = "0%";
@@ -225,7 +250,7 @@ public partial class MainWindow : Window
             await _diagnosticService.RunAsync(progress, ApplyDiagnosticResult, _diagnosticCts.Token);
             DiagnosticStatusText.Text = "Controllo completato";
             DiagnosticDetailText.Text = "Tutte le fasi del controllo completo sono terminate.";
-            AppendLog("Controllo completo completato.");
+            UpdateDiagnosticSummaryText();
         }
         catch (OperationCanceledException)
         {
@@ -244,32 +269,51 @@ public partial class MainWindow : Window
             _diagnosticCts.Dispose();
             _diagnosticCts = null;
             RunDiagnosticButton.IsEnabled = true;
+            _refreshTimer.Start();
             await RefreshDashboardAsync();
         }
     }
 
     private void ApplyDiagnosticResult(DiagnosticStepResult result)
     {
-        Brush brush = result.Success ? Brushes.LimeGreen : Brushes.Goldenrod;
-        string text = $"{result.Title}: {result.Status} - {result.Detail}";
+        RegisterDiagnosticSummary(result);
 
-        switch (result.Title)
+        string? category = MapDiagnosticCategory(result.Title);
+        if (category is null)
         {
-            case "Sistema":
+            AppendLog($"{result.Title}: {result.Status} - {result.Detail}");
+            return;
+        }
+
+        int severity = GetSeverityRank(result.Status);
+        if (_diagnosticCategorySeverity.TryGetValue(category, out int currentSeverity) && severity < currentSeverity)
+        {
+            AppendLog($"{result.Title}: {result.Status} - {result.Detail}");
+            return;
+        }
+
+        _diagnosticCategorySeverity[category] = severity;
+        Brush brush = GetSeverityBrush(result.Status);
+        string text = BuildQuickStatusMessage(category, result);
+
+        switch (category)
+        {
+            case "system":
                 SetDot(SystemStatusDot, SystemStatusText, brush, text);
                 break;
-            case "Disco":
+            case "disk":
                 SetDot(DiskStatusDot, DiskStatusText, brush, text);
                 break;
-            case "Rete":
-            case "Firewall":
+            case "network":
                 SetDot(NetworkStatusDot, NetworkStatusText, brush, text);
                 break;
-            case "Sicurezza":
-            case "Definizioni AV":
+            case "security":
                 SetDot(SecurityStatusDot, SecurityStatusText, brush, text);
                 break;
-            case "Sensori":
+            case "reboot":
+                SetDot(RebootStatusDot, RebootStatusText, brush, text);
+                break;
+            case "sensor":
                 SetDot(SensorStatusDot, SensorStatusText, brush, text);
                 break;
         }
@@ -295,6 +339,7 @@ public partial class MainWindow : Window
 
         _toolOperationRunning = true;
         _activeOperationName = "Comando in esecuzione";
+        _refreshTimer.Stop();
         FooterStatusText.Text = "Comando in corso...";
         targetTextBox.Text = $"[{DateTime.Now:HH:mm:ss}] Avvio comando..." + Environment.NewLine;
         SetToolStatus("IN CORSO", "Esecuzione comando di sistema...", "-", Brushes.DodgerBlue, Brushes.White);
@@ -306,9 +351,10 @@ public partial class MainWindow : Window
             using var cts = new CancellationTokenSource();
             ToolExecutionResult result = await action(cts.Token);
             _activeOperationName = result.Title;
+            string userCommand = BuildUserCommandLabel(result.CommandLine);
             targetTextBox.Text =
                 $"Titolo: {result.Title}{Environment.NewLine}" +
-                $"Comando: {result.CommandLine}{Environment.NewLine}" +
+                $"Comando: {userCommand}{Environment.NewLine}" +
                 $"Exit code: {result.ExitCode}{Environment.NewLine}" +
                 $"Esito: {(result.Success ? "OK" : "ERRORE")}{Environment.NewLine}{Environment.NewLine}" +
                 result.Output;
@@ -316,7 +362,7 @@ public partial class MainWindow : Window
             SetToolStatus(
                 result.Success ? "OK" : "ERRORE",
                 $"{result.Title} {(result.Success ? "eseguito correttamente" : "terminato con problemi")}.",
-                result.CommandLine,
+                userCommand,
                 result.Success ? Brushes.LimeGreen : Brushes.OrangeRed,
                 Brushes.White);
 
@@ -335,6 +381,7 @@ public partial class MainWindow : Window
             _toolOperationRunning = false;
             _activeOperationName = null;
             SetButtonsEnabled(true);
+            _refreshTimer.Start();
         }
     }
 
@@ -342,6 +389,11 @@ public partial class MainWindow : Window
     {
         RunDiagnosticButton.IsEnabled = isEnabled && _diagnosticCts is null;
         RefreshButton.IsEnabled = isEnabled && _diagnosticCts is null;
+        SystemSettingsButton.IsEnabled = isEnabled;
+        NetworkSettingsButton.IsEnabled = isEnabled;
+        WindowsSecurityButton.IsEnabled = isEnabled;
+        InstalledAppsButton.IsEnabled = isEnabled;
+        QuickWindowsUpdateButton.IsEnabled = isEnabled;
         SystemInfoButton.IsEnabled = isEnabled;
         TopProcessesButton.IsEnabled = isEnabled;
         CriticalEventsButton.IsEnabled = isEnabled;
@@ -461,6 +513,193 @@ public partial class MainWindow : Window
 
         SetDot(dot, text, brush, state.Message);
     }
+
+    private void ResetDiagnosticCategoryStates()
+    {
+        _diagnosticCategorySeverity.Clear();
+    }
+
+    private void ResetDiagnosticSummaryUi()
+    {
+        _diagnosticSummaryLines.Clear();
+        _diagnosticOkCount = 0;
+        _diagnosticWarningCount = 0;
+        _diagnosticErrorCount = 0;
+        DiagnosticOkCountText.Text = "OK 0";
+        DiagnosticWarningCountText.Text = "ATT 0";
+        DiagnosticErrorCountText.Text = "ERR 0";
+        DiagnosticSummaryTextBox.Text = "Controllo in preparazione...";
+    }
+
+    private void RegisterDiagnosticSummary(DiagnosticStepResult result)
+    {
+        switch (result.Status)
+        {
+            case "OK":
+                _diagnosticOkCount++;
+                break;
+            case "ATTENZIONE":
+                _diagnosticWarningCount++;
+                break;
+            default:
+                _diagnosticErrorCount++;
+                break;
+        }
+
+        DiagnosticOkCountText.Text = $"OK {_diagnosticOkCount}";
+        DiagnosticWarningCountText.Text = $"ATT {_diagnosticWarningCount}";
+        DiagnosticErrorCountText.Text = $"ERR {_diagnosticErrorCount}";
+
+        string icon = result.Status switch
+        {
+            "OK" => "[OK]",
+            "ATTENZIONE" => "[!]",
+            _ => "[X]"
+        };
+
+        _diagnosticSummaryLines.Insert(0, $"{icon} {result.Title}: {BuildShortDiagnosticDetail(result)}");
+        if (_diagnosticSummaryLines.Count > 6)
+        {
+            _diagnosticSummaryLines.RemoveAt(_diagnosticSummaryLines.Count - 1);
+        }
+
+        UpdateDiagnosticSummaryText();
+    }
+
+    private void UpdateDiagnosticSummaryText()
+    {
+        DiagnosticSummaryTextBox.Text = _diagnosticSummaryLines.Count == 0
+            ? "Nessun controllo eseguito."
+            : string.Join(Environment.NewLine, _diagnosticSummaryLines);
+        DiagnosticSummaryTextBox.ScrollToHome();
+    }
+
+    private static string BuildShortDiagnosticDetail(DiagnosticStepResult result)
+    {
+        string detail = result.Detail?.Trim() ?? string.Empty;
+        if (detail.Length <= 72)
+        {
+            return detail;
+        }
+
+        return detail[..69] + "...";
+    }
+
+    private static string BuildUserCommandLabel(string commandLine)
+    {
+        if (string.IsNullOrWhiteSpace(commandLine))
+        {
+            return "-";
+        }
+
+        string compact = commandLine.Trim();
+
+        if (compact.Contains("powershell.exe", StringComparison.OrdinalIgnoreCase) &&
+            compact.Contains("-EncodedCommand", StringComparison.OrdinalIgnoreCase))
+        {
+            return "PowerShell comando interno";
+        }
+
+        if (compact.StartsWith("ms-settings:", StringComparison.OrdinalIgnoreCase))
+        {
+            return compact switch
+            {
+                var s when s.Contains("windowsupdate", StringComparison.OrdinalIgnoreCase) => "Apri Windows Update",
+                var s when s.Contains("appsfeatures", StringComparison.OrdinalIgnoreCase) => "Apri app installate",
+                var s when s.Contains("network", StringComparison.OrdinalIgnoreCase) => "Apri impostazioni rete",
+                var s when s.Contains("about", StringComparison.OrdinalIgnoreCase) => "Apri impostazioni sistema",
+                _ => "Apri impostazioni Windows"
+            };
+        }
+
+        if (compact.StartsWith("windowsdefender:", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Apri Sicurezza Windows";
+        }
+
+        compact = compact
+            .Replace("chkdsk.exe", "chkdsk", StringComparison.OrdinalIgnoreCase)
+            .Replace("sfc.exe", "sfc", StringComparison.OrdinalIgnoreCase)
+            .Replace("DISM.exe", "DISM", StringComparison.OrdinalIgnoreCase)
+            .Replace("ipconfig.exe", "ipconfig", StringComparison.OrdinalIgnoreCase)
+            .Replace("route.exe", "route", StringComparison.OrdinalIgnoreCase)
+            .Replace("ping.exe", "ping", StringComparison.OrdinalIgnoreCase)
+            .Replace("nslookup.exe", "nslookup", StringComparison.OrdinalIgnoreCase)
+            .Replace("powershell.exe", "PowerShell", StringComparison.OrdinalIgnoreCase);
+
+        if (compact.Length <= 52)
+        {
+            return compact;
+        }
+
+        return compact[..49] + "...";
+    }
+
+    private static string? MapDiagnosticCategory(string title) => title switch
+    {
+        "Sistema" or "Integrita" or "Componenti" or "Servizi" or "Eventi" or "Aggiornamenti" => "system",
+        "Disco" => "disk",
+        "Rete" or "DNS" or "Firewall" => "network",
+        "Sicurezza" or "Definizioni AV" => "security",
+        "Riavvio" => "reboot",
+        "Sensori" => "sensor",
+        _ => null
+    };
+
+    private static int GetSeverityRank(string status) => status switch
+    {
+        "ERRORE" => 2,
+        "ATTENZIONE" => 1,
+        _ => 0
+    };
+
+    private static Brush GetSeverityBrush(string status) => status switch
+    {
+        "ERRORE" => Brushes.OrangeRed,
+        "ATTENZIONE" => Brushes.Goldenrod,
+        _ => Brushes.LimeGreen
+    };
+
+    private static string BuildQuickStatusMessage(string category, DiagnosticStepResult result) => category switch
+    {
+        "system" => result.Status switch
+        {
+            "OK" => "Integrita sistema sotto controllo",
+            "ATTENZIONE" => $"Sistema da verificare: {result.Title}",
+            _ => $"Problema sistema: {result.Title}"
+        },
+        "disk" => result.Status switch
+        {
+            "OK" => "Disco principale sotto controllo",
+            "ATTENZIONE" => "Disco con avvisi da controllare",
+            _ => "Disco con problemi rilevati"
+        },
+        "network" => result.Status switch
+        {
+            "OK" => result.Title == "Firewall" ? "Firewall e rete operativi" : "Rete operativa",
+            "ATTENZIONE" => $"Rete da verificare: {result.Title}",
+            _ => $"Problema rete: {result.Title}"
+        },
+        "security" => result.Status switch
+        {
+            "OK" => result.Title == "Definizioni AV" ? "Protezione e firme aggiornate" : "Protezione Windows attiva",
+            "ATTENZIONE" => $"Sicurezza da verificare: {result.Title}",
+            _ => $"Problema sicurezza: {result.Title}"
+        },
+        "reboot" => result.Status switch
+        {
+            "OK" => "Nessun riavvio richiesto",
+            "ATTENZIONE" => "Riavvio richiesto dal sistema",
+            _ => "Stato riavvio da verificare"
+        },
+        "sensor" => result.Status switch
+        {
+            "OK" => "Sensori temperatura disponibili",
+            "ATTENZIONE" => "Sensori disponibili in parte",
+            _ => "Sensori non disponibili"
+        },
+        _ => $"{result.Title}: {result.Status}"
+    };
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {

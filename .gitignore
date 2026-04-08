@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+publish-v*/
+*.user
+*.suo
+*.pdb
+LibreHardwareMonitor/
+*.zip
+*.log

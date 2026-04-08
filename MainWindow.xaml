@@ -33,14 +33,14 @@
 
         <Style x:Key="MetricTitleStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#B5BDCC" />
-            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
 
         <Style x:Key="MetricValueStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Margin" Value="0,2,0,1" />
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -56,7 +56,7 @@
             <Setter Property="Margin" Value="0,0,4,4" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -111,7 +111,7 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="8,6" />
             <Setter Property="Margin" Value="0,0,0,4" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Cursor" Value="Hand" />
@@ -170,7 +170,7 @@
             <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="AcceptsReturn" Value="True" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="FontFamily" Value="Segoe UI" />
         </Style>
     </Window.Resources>
@@ -192,7 +192,7 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock Text="GASPAR SYSTEM HEALTH"
-                       FontSize="16"
+                       FontSize="17"
                        FontWeight="Bold"
                        Foreground="{StaticResource AccentBrush}"
                        VerticalAlignment="Center" />
@@ -208,13 +208,13 @@
                                Text="AMMINISTRATORE"
                                Foreground="{StaticResource GoodBrush}"
                                FontWeight="Bold"
-                               FontSize="10"
+                               FontSize="11"
                                HorizontalAlignment="Center" />
                     <TextBlock x:Name="ClockText"
                                Text="--:--:--"
                                Margin="0,2,0,0"
                                Foreground="White"
-                               FontSize="13"
+                               FontSize="14"
                                FontWeight="SemiBold"
                                HorizontalAlignment="Center" />
                 </StackPanel>
@@ -225,18 +225,18 @@
             <Border Style="{StaticResource CardStyle}" Margin="0,0,7,7">
                 <StackPanel>
                     <TextBlock Text="PC" Style="{StaticResource MetricTitleStyle}" />
-                    <TextBlock x:Name="ComputerNameText" Text="-" Style="{StaticResource MetricValueStyle}" FontSize="12" />
-                    <TextBlock x:Name="OperatingSystemText" Text="-" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="11" />
-                    <TextBlock x:Name="GpuNameText" Text="-" Margin="0,2,0,0" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="11" />
+                    <TextBlock x:Name="ComputerNameText" Text="-" Style="{StaticResource MetricValueStyle}" FontSize="14" />
+                    <TextBlock x:Name="OperatingSystemText" Text="-" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="12" />
+                    <TextBlock x:Name="GpuNameText" Text="-" Margin="0,2,0,0" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="12" />
                 </StackPanel>
             </Border>
 
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,7">
                 <StackPanel>
                     <TextBlock Text="CPU" Style="{StaticResource MetricTitleStyle}" />
-                    <TextBlock x:Name="CpuNameText" Text="-" Style="{StaticResource MetricValueStyle}" FontSize="12" />
+                    <TextBlock x:Name="CpuNameText" Text="-" Style="{StaticResource MetricValueStyle}" FontSize="14" />
                     <ProgressBar x:Name="CpuUsageBar" Height="7" Maximum="100" Value="0" Foreground="{StaticResource AccentBrush}" Background="#262A35" />
-                    <TextBlock x:Name="CpuUsageText" Text="0%" Margin="0,3,0,0" Foreground="#D0D5DD" FontSize="10" />
+                    <TextBlock x:Name="CpuUsageText" Text="0%" Margin="0,3,0,0" Foreground="#D0D5DD" FontSize="11" />
                 </StackPanel>
             </Border>
 
@@ -245,7 +245,7 @@
                     <TextBlock Text="MEMORIA" Style="{StaticResource MetricTitleStyle}" />
                     <TextBlock x:Name="MemoryText" Text="-" Style="{StaticResource MetricValueStyle}" />
                     <ProgressBar x:Name="MemoryUsageBar" Height="7" Maximum="100" Value="0" Foreground="{StaticResource GoodBrush}" Background="#262A35" />
-                    <TextBlock x:Name="UptimeText" Text="Online da -" Margin="0,3,0,0" Foreground="#D0D5DD" FontWeight="SemiBold" FontSize="10" />
+                    <TextBlock x:Name="UptimeText" Text="Online da -" Margin="0,3,0,0" Foreground="#D0D5DD" FontWeight="SemiBold" FontSize="11" />
                 </StackPanel>
             </Border>
 
@@ -254,16 +254,16 @@
                     <TextBlock Text="DISCO PRINCIPALE" Style="{StaticResource MetricTitleStyle}" />
                     <TextBlock x:Name="DiskText" Text="-" Style="{StaticResource MetricValueStyle}" />
                     <ProgressBar x:Name="DiskUsageBar" Height="7" Maximum="100" Value="0" Foreground="{StaticResource WarnBrush}" Background="#262A35" />
-                    <TextBlock x:Name="DiskFreeText" Text="-" Margin="0,3,0,0" Foreground="#D0D5DD" FontSize="10" />
+                    <TextBlock x:Name="DiskFreeText" Text="-" Margin="0,3,0,0" Foreground="#D0D5DD" FontSize="11" />
                 </StackPanel>
             </Border>
         </UniformGrid>
 
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.62*" />
+                <ColumnDefinition Width="1.78*" />
                 <ColumnDefinition Width="7" />
-                <ColumnDefinition Width="0.88*" />
+                <ColumnDefinition Width="0.72*" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Style="{StaticResource CardStyle}">
@@ -273,11 +273,12 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="CONTROLLO COMPLETO" FontSize="12" FontWeight="Bold" Foreground="White" />
-                    <TextBlock Grid.Row="1" x:Name="DiagnosticStatusText" Text="Pronto." Margin="0,3,0,0" Foreground="#D0D5DD" FontSize="10" />
-                    <TextBlock Grid.Row="2" x:Name="DiagnosticDetailText" Text="La diagnostica esegue controlli completi e progressivi." Margin="0,2,0,0" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="10" />
+                    <TextBlock Text="CONTROLLO COMPLETO" FontSize="13" FontWeight="Bold" Foreground="White" />
+                    <TextBlock Grid.Row="1" x:Name="DiagnosticStatusText" Text="Pronto." Margin="0,3,0,0" Foreground="#D0D5DD" FontSize="11" />
+                    <TextBlock Grid.Row="2" x:Name="DiagnosticDetailText" Text="La diagnostica esegue controlli completi e progressivi." Margin="0,2,0,0" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="11" />
 
                     <Grid Grid.Row="3" Margin="0,7,0,0">
                         <Grid.RowDefinitions>
@@ -303,7 +304,7 @@
                                    Margin="7,0,0,0"
                                    VerticalAlignment="Center"
                                    Foreground="#D0D5DD"
-                                   FontSize="10" />
+                                   FontSize="11" />
 
                         <WrapPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0">
                             <Button x:Name="RunDiagnosticButton" Content="Avvia controllo completo" Style="{StaticResource ActionButtonStyle}" />
@@ -311,19 +312,93 @@
                             <Button x:Name="OpenLogButton" Content="Apri cartella log" Style="{StaticResource ActionButtonStyle}" />
                         </WrapPanel>
                     </Grid>
+
+                    <Border Grid.Row="4"
+                            Margin="0,7,0,0"
+                            Background="#141823"
+                            BorderBrush="#2A2D39"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="ESITO RAPIDO"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="#B5BDCC"
+                                           VerticalAlignment="Center" />
+
+                                <Border Grid.Column="1"
+                                        Margin="8,0,4,0"
+                                        Padding="8,3"
+                                        CornerRadius="10"
+                                        Background="#173322">
+                                    <TextBlock x:Name="DiagnosticOkCountText"
+                                               Text="OK 0"
+                                               Foreground="#8EF0B4"
+                                               FontWeight="Bold"
+                                               FontSize="12" />
+                                </Border>
+
+                                <Border Grid.Column="2"
+                                        Margin="0,0,4,0"
+                                        Padding="8,3"
+                                        CornerRadius="10"
+                                        Background="#3A2D11">
+                                    <TextBlock x:Name="DiagnosticWarningCountText"
+                                               Text="ATT 0"
+                                               Foreground="#FFD36A"
+                                               FontWeight="Bold"
+                                               FontSize="12" />
+                                </Border>
+
+                                <Border Grid.Column="3"
+                                        Padding="8,3"
+                                        CornerRadius="10"
+                                        Background="#3C1820">
+                                    <TextBlock x:Name="DiagnosticErrorCountText"
+                                               Text="ERR 0"
+                                               Foreground="#FF9BAF"
+                                               FontWeight="Bold"
+                                               FontSize="12" />
+                                </Border>
+                            </Grid>
+
+                            <TextBox Grid.Row="1"
+                                     x:Name="DiagnosticSummaryTextBox"
+                                     Margin="0,7,0,0"
+                                     MinHeight="74"
+                                     MaxHeight="92"
+                                     Style="{StaticResource OutputTextBoxStyle}"
+                                     FontSize="12"
+                                     Text="Nessun controllo eseguito." />
+                        </Grid>
+                    </Border>
                 </Grid>
             </Border>
 
             <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                 <StackPanel>
-                    <TextBlock Text="TEMPERATURE" FontSize="12" FontWeight="Bold" Foreground="White" />
+                    <TextBlock Text="TEMPERATURE" FontSize="13" FontWeight="Bold" Foreground="White" />
                     <TextBlock Text="CPU" Style="{StaticResource MetricTitleStyle}" Margin="0,6,0,0" />
                     <TextBlock x:Name="CpuTempText" Text="N/A" Style="{StaticResource MetricValueStyle}" />
                     <TextBlock Text="GPU" Style="{StaticResource MetricTitleStyle}" Margin="0,2,0,0" />
                     <TextBlock x:Name="GpuTempText" Text="N/A" Style="{StaticResource MetricValueStyle}" />
                     <TextBlock Text="SORGENTE" Style="{StaticResource MetricTitleStyle}" Margin="0,2,0,0" />
-                    <TextBlock x:Name="SensorSourceText" Text="Non disponibile" Foreground="#D0D5DD" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="10" />
-                    <TextBlock x:Name="SensorNoteText" Text="-" Margin="0,2,0,0" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="10" />
+                    <TextBlock x:Name="SensorSourceText" Text="Non disponibile" Foreground="#D0D5DD" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="11" />
+                    <TextBlock x:Name="SensorNoteText" Text="-" Margin="0,2,0,0" Foreground="#C7CDD8" TextWrapping="Wrap" FontSize="11" />
                 </StackPanel>
             </Border>
         </Grid>
@@ -343,37 +418,43 @@
                     </Grid.RowDefinitions>
                     <TextBlock Text="STATO RAPIDO" FontSize="13" FontWeight="Bold" Foreground="White" />
                     <ScrollViewer Grid.Row="1" Margin="0,5,0,0"
-                                  VerticalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Visible"
                                   HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <Border CornerRadius="10" Background="#141823" Padding="8" Margin="0,0,0,4" MinHeight="42">
                                 <DockPanel LastChildFill="True">
                                     <Ellipse x:Name="SystemStatusDot" Width="12" Height="12" Fill="#6B7280" Margin="0,1,8,0" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="SystemStatusText" Text="Sistema non verificato" Foreground="#D0D5DD" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="SystemStatusText" Text="Sistema non verificato" Foreground="#D0D5DD" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
                                 </DockPanel>
                             </Border>
                             <Border CornerRadius="10" Background="#141823" Padding="8" Margin="0,0,0,4" MinHeight="42">
                                 <DockPanel LastChildFill="True">
                                     <Ellipse x:Name="DiskStatusDot" Width="12" Height="12" Fill="#6B7280" Margin="0,1,8,0" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="DiskStatusText" Text="Disco non verificato" Foreground="#D0D5DD" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="DiskStatusText" Text="Disco non verificato" Foreground="#D0D5DD" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
                                 </DockPanel>
                             </Border>
                             <Border CornerRadius="10" Background="#141823" Padding="8" Margin="0,0,0,4" MinHeight="42">
                                 <DockPanel LastChildFill="True">
                                     <Ellipse x:Name="NetworkStatusDot" Width="12" Height="12" Fill="#6B7280" Margin="0,1,8,0" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="NetworkStatusText" Text="Rete non verificata" Foreground="#D0D5DD" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="NetworkStatusText" Text="Rete non verificata" Foreground="#D0D5DD" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
                                 </DockPanel>
                             </Border>
                             <Border CornerRadius="10" Background="#141823" Padding="8" Margin="0,0,0,4" MinHeight="42">
                                 <DockPanel LastChildFill="True">
                                     <Ellipse x:Name="SecurityStatusDot" Width="12" Height="12" Fill="#6B7280" Margin="0,1,8,0" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="SecurityStatusText" Text="Sicurezza non verificata" Foreground="#D0D5DD" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="SecurityStatusText" Text="Sicurezza non verificata" Foreground="#D0D5DD" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                </DockPanel>
+                            </Border>
+                            <Border CornerRadius="10" Background="#141823" Padding="8" Margin="0,0,0,4" MinHeight="42">
+                                <DockPanel LastChildFill="True">
+                                    <Ellipse x:Name="RebootStatusDot" Width="12" Height="12" Fill="#6B7280" Margin="0,1,8,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="RebootStatusText" Text="Riavvio non verificato" Foreground="#D0D5DD" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
                                 </DockPanel>
                             </Border>
                             <Border CornerRadius="10" Background="#141823" Padding="8" MinHeight="42">
                                 <DockPanel LastChildFill="True">
                                     <Ellipse x:Name="SensorStatusDot" Width="12" Height="12" Fill="#6B7280" Margin="0,1,8,0" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="SensorStatusText" Text="Sensori non verificati" Foreground="#D0D5DD" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="SensorStatusText" Text="Sensori non verificati" Foreground="#D0D5DD" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
                                 </DockPanel>
                             </Border>
                         </StackPanel>
@@ -400,12 +481,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="STATO STRUMENTO" FontSize="11" FontWeight="SemiBold" Foreground="#B5BDCC" />
-                                <TextBlock x:Name="ToolStatusText" Text="Nessun comando in esecuzione." Margin="0,3,0,0" Foreground="White" FontSize="12" FontWeight="SemiBold" />
-                                <TextBlock x:Name="ToolCommandText" Text="Comando: -" Margin="0,3,0,0" Foreground="#D0D5DD" TextWrapping="Wrap" FontSize="11" />
+                                <TextBlock Text="STATO STRUMENTO" FontSize="12" FontWeight="SemiBold" Foreground="#B5BDCC" />
+                                <TextBlock x:Name="ToolStatusText" Text="Nessun comando in esecuzione." Margin="0,3,0,0" Foreground="White" FontSize="13" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ToolCommandText" Text="Comando: -" Margin="0,3,0,0" Foreground="#D0D5DD" TextWrapping="Wrap" FontSize="12" />
                             </StackPanel>
                             <Border Grid.Column="1" x:Name="ToolStatusBadge" Background="#2A2D39" CornerRadius="10" Padding="9,4" Margin="7,0,0,0" VerticalAlignment="Top">
-                                <TextBlock x:Name="ToolStatusBadgeText" Text="IN ATTESA" Foreground="#D0D5DD" FontWeight="Bold" FontSize="11" />
+                                <TextBlock x:Name="ToolStatusBadgeText" Text="IN ATTESA" Foreground="#D0D5DD" FontWeight="Bold" FontSize="12" />
                             </Border>
                         </Grid>
                     </Border>
@@ -431,6 +512,11 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <WrapPanel>
+                                <Button x:Name="SystemSettingsButton" Content="Impostazioni sistema" Style="{StaticResource ActionButtonStyle}" />
+                                <Button x:Name="NetworkSettingsButton" Content="Impostazioni rete" Style="{StaticResource ActionButtonStyle}" />
+                                <Button x:Name="WindowsSecurityButton" Content="Sicurezza Windows" Style="{StaticResource ActionButtonStyle}" />
+                                <Button x:Name="InstalledAppsButton" Content="App installate" Style="{StaticResource ActionButtonStyle}" />
+                                <Button x:Name="QuickWindowsUpdateButton" Content="Impostazioni update" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="SystemInfoButton" Content="Info sistema" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="TopProcessesButton" Content="Processi attivi" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="CriticalEventsButton" Content="Eventi critici" Style="{StaticResource ActionButtonStyle}" />
@@ -534,13 +620,13 @@
             <TextBlock x:Name="FooterStatusText"
                        Text="Pronto."
                        Foreground="#D0D5DD"
-                       FontSize="10"
+                       FontSize="11"
                        TextTrimming="CharacterEllipsis" />
             <TextBlock Grid.Column="2"
                        x:Name="LogPathText"
                        Text="-"
                        Foreground="#98A2B3"
-                       FontSize="10"
+                       FontSize="11"
                        TextTrimming="CharacterEllipsis"
                        HorizontalAlignment="Right" />
         </Grid>
