@@ -2,6 +2,7 @@ using GasparSystemHealth.Models;
 using Microsoft.Win32;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace GasparSystemHealth.Services;
 
@@ -72,6 +73,60 @@ public sealed class SystemProbeService : IDisposable
         };
     }
 
+    public string BuildDetailedReport()
+    {
+        SystemSnapshot snapshot = CaptureSnapshot();
+        var builder = new StringBuilder();
+
+        builder.AppendLine("=== SPECIFICHE COMPLETE SISTEMA ===");
+        builder.AppendLine($"PC: {snapshot.ComputerName}");
+        builder.AppendLine($"Sistema operativo: {snapshot.OperatingSystem}");
+        builder.AppendLine($"Architettura OS: {(Environment.Is64BitOperatingSystem ? "64 bit" : "32 bit")}");
+        builder.AppendLine($"Processori logici: {Environment.ProcessorCount}");
+        builder.AppendLine($"Uptime: {FormatUptime(snapshot.Uptime)}");
+        builder.AppendLine();
+
+        builder.AppendLine("=== CPU ===");
+        builder.AppendLine($"Modello: {snapshot.CpuName}");
+        builder.AppendLine($"Carico attuale: {snapshot.CpuUsagePercent:F1}%");
+        builder.AppendLine();
+
+        builder.AppendLine("=== MEMORIA ===");
+        builder.AppendLine($"RAM totale: {snapshot.MemoryTotalGb:F1} GB");
+        builder.AppendLine($"RAM in uso: {snapshot.MemoryUsedGb:F1} GB");
+        builder.AppendLine($"RAM utilizzata: {snapshot.MemoryUsedPercent:F1}%");
+        builder.AppendLine();
+
+        builder.AppendLine("=== GRAFICA ===");
+        builder.AppendLine($"GPU: {snapshot.GpuName}");
+        builder.AppendLine();
+
+        builder.AppendLine("=== ARCHIVIAZIONE ===");
+        foreach (DriveInfo drive in DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed && d.IsReady))
+        {
+            double totalGb = Math.Round(drive.TotalSize / 1024d / 1024d / 1024d, 1);
+            double freeGb = Math.Round(drive.TotalFreeSpace / 1024d / 1024d / 1024d, 1);
+            double usedPercent = totalGb <= 0 ? 0 : Math.Round(((totalGb - freeGb) / totalGb) * 100d, 1);
+            builder.AppendLine($"{drive.Name.TrimEnd('\\')}: {freeGb:F1} GB liberi su {totalGb:F1} GB ({usedPercent:F1}% usato)");
+        }
+        builder.AppendLine();
+
+        builder.AppendLine("=== TEMPERATURE ===");
+        builder.AppendLine($"CPU: {(snapshot.Temperatures.CpuCelsius.HasValue ? $"{snapshot.Temperatures.CpuCelsius:F1} C" : "N/A")}");
+        builder.AppendLine($"GPU: {(snapshot.Temperatures.GpuCelsius.HasValue ? $"{snapshot.Temperatures.GpuCelsius:F1} C" : "N/A")}");
+        builder.AppendLine($"Sorgente sensori: {snapshot.Temperatures.Source}");
+        if (!string.IsNullOrWhiteSpace(snapshot.Temperatures.Note))
+        {
+            builder.AppendLine($"Nota sensori: {snapshot.Temperatures.Note}");
+        }
+        builder.AppendLine();
+
+        builder.AppendLine("=== SESSIONE ===");
+        builder.AppendLine($"Snapshot generato: {snapshot.SnapshotTime:yyyy-MM-dd HH:mm:ss}");
+
+        return builder.ToString();
+    }
+
     private static string ReadOsCaption()
     {
         using RegistryKey? key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
@@ -135,6 +190,16 @@ public sealed class SystemProbeService : IDisposable
         }
 
         return memory;
+    }
+
+    private static string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+        {
+            return $"{(int)uptime.TotalDays}g {uptime.Hours}h {uptime.Minutes}m";
+        }
+
+        return $"{uptime.Hours}h {uptime.Minutes}m";
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]

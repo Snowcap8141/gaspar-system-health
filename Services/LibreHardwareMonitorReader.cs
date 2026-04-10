@@ -40,7 +40,7 @@ public sealed class LibreHardwareMonitorReader : IDisposable
         }
         catch (Exception ex)
         {
-            _note = $"Errore sensori: {ex.Message}";
+            _note = SecurityHelpers.ToSafeUserMessage(ex, "Errore durante la lettura dei sensori.");
         }
 
         return new TemperatureSnapshot
@@ -94,7 +94,7 @@ public sealed class LibreHardwareMonitorReader : IDisposable
         catch (Exception ex)
         {
             _source = "LibreHardwareMonitor errore";
-            _note = ex.Message;
+            _note = SecurityHelpers.ToSafeUserMessage(ex, "Inizializzazione sensori non riuscita.");
             return false;
         }
     }

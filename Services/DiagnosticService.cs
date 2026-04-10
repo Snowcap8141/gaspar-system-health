@@ -23,16 +23,19 @@ public sealed class DiagnosticService
         Action<DiagnosticStepResult> onStep,
         CancellationToken cancellationToken)
     {
-        _logger.Write("Controllo automatico avviato.");
+        int okCount = 0;
+        int warningCount = 0;
+        int errorCount = 0;
+        _logger.Write("Controllo completo avviato.");
 
-        await ExecuteStepAsync(8, "Sistema", "Raccolta informazioni di base.", 5, async () =>
+        await ExecuteStepAsync(8, "Sistema", "Raccolta informazioni di base.", 5, async ct =>
         {
             SystemSnapshot snapshot = _probeService.CaptureSnapshot();
             string detail = $"{snapshot.OperatingSystem} | CPU {snapshot.CpuName}";
             return new DiagnosticStepResult { Title = "Sistema", Detail = detail, Status = "OK", Success = true };
         });
 
-        await ExecuteStepAsync(18, "Disco", "Controllo spazio disponibile.", 5, async () =>
+        await ExecuteStepAsync(18, "Disco", "Controllo spazio disponibile.", 5, async ct =>
         {
             SystemSnapshot snapshot = _probeService.CaptureSnapshot();
             bool ok = snapshot.PrimaryDriveUsedPercent < 90;
@@ -41,7 +44,7 @@ public sealed class DiagnosticService
             return new DiagnosticStepResult { Title = "Disco", Detail = detail, Status = status, Success = ok };
         });
 
-        await ExecuteStepAsync(28, "Rete", "Ping verso rete esterna.", 6, async () =>
+        await ExecuteStepAsync(28, "Rete", "Ping verso rete esterna.", 6, async ct =>
         {
             using var ping = new Ping();
             PingReply reply = await ping.SendPingAsync("1.1.1.1", 1500);
@@ -51,9 +54,9 @@ public sealed class DiagnosticService
             return new DiagnosticStepResult { Title = "Rete", Detail = detail, Status = status, Success = ok };
         });
 
-        await ExecuteStepAsync(38, "DNS", "Verifica risoluzione DNS.", 6, async () =>
+        await ExecuteStepAsync(38, "DNS", "Verifica risoluzione DNS.", 6, async ct =>
         {
-            IPAddress[] addresses = await Dns.GetHostAddressesAsync("www.microsoft.com", cancellationToken);
+            IPAddress[] addresses = await Dns.GetHostAddressesAsync("www.microsoft.com", ct);
             bool ok = addresses.Length > 0;
             string detail = ok ? $"Risoluzione DNS attiva: {addresses[0]}" : "Nessun indirizzo DNS restituito";
             return new DiagnosticStepResult
@@ -65,7 +68,7 @@ public sealed class DiagnosticService
             };
         });
 
-        await ExecuteStepAsync(50, "Integrita", "Verifica file di sistema (SFC).", DefaultCommandTimeoutSeconds, async () =>
+        await ExecuteStepAsync(50, "Integrita", "Verifica file di sistema (SFC).", DefaultCommandTimeoutSeconds, async ct =>
         {
             return await RunCommandDiagnosticStepAsync(
                 "Integrita",
@@ -75,11 +78,10 @@ public sealed class DiagnosticService
                 warningDetails: ["Windows Resource Protection found integrity violations"],
                 fallbackSuccessMessage: "Verifica SFC completata senza errori segnalati",
                 fallbackWarningMessage: "Verifica SFC completata con elementi da controllare",
-                timeoutSeconds: DefaultCommandTimeoutSeconds,
-                cancellationToken: cancellationToken);
+                cancellationToken: ct);
         });
 
-        await ExecuteStepAsync(62, "Componenti", "Verifica integrita component store (DISM).", DefaultCommandTimeoutSeconds, async () =>
+        await ExecuteStepAsync(62, "Componenti", "Verifica integrita component store (DISM).", DefaultCommandTimeoutSeconds, async ct =>
         {
             return await RunCommandDiagnosticStepAsync(
                 "Componenti",
@@ -89,11 +91,10 @@ public sealed class DiagnosticService
                 warningDetails: ["The component store is repairable", "Il component store e ripristinabile"],
                 fallbackSuccessMessage: "Verifica DISM completata senza errori",
                 fallbackWarningMessage: "Verifica DISM completata con avvisi",
-                timeoutSeconds: DefaultCommandTimeoutSeconds,
-                cancellationToken: cancellationToken);
+                cancellationToken: ct);
         });
 
-        await ExecuteStepAsync(72, "Firewall", "Verifica servizio firewall.", 5, async () =>
+        await ExecuteStepAsync(72, "Firewall", "Verifica servizio firewall.", 5, async ct =>
         {
             bool ok = ServiceControllerStatus("mpssvc");
             return new DiagnosticStepResult
@@ -105,7 +106,7 @@ public sealed class DiagnosticService
             };
         });
 
-        await ExecuteStepAsync(80, "Sicurezza", "Verifica Windows Defender.", 5, async () =>
+        await ExecuteStepAsync(80, "Sicurezza", "Verifica Windows Defender.", 5, async ct =>
         {
             bool ok = ServiceControllerStatus("WinDefend");
             return new DiagnosticStepResult
@@ -117,19 +118,23 @@ public sealed class DiagnosticService
             };
         });
 
-        await ExecuteStepAsync(84, "Definizioni AV", "Controllo aggiornamento firme antivirus.", 8, async () =>
+        await ExecuteStepAsync(84, "Definizioni AV", "Controllo aggiornamento firme antivirus.", 8, async ct =>
         {
-            return await CheckAntivirusDefinitionsAsync(cancellationToken);
+            return await CheckAntivirusDefinitionsAsync(ct);
         });
 
-        await ExecuteStepAsync(88, "Servizi", "Verifica servizi critici Windows.", 5, async () =>
+        await ExecuteStepAsync(88, "Servizi", "Verifica servizi critici Windows.", 5, async ct =>
         {
-            string[] criticalServices = ["EventLog", "Schedule", "W32Time"];
-            string[] missing = criticalServices.Where(service => !ServiceControllerStatus(service)).ToArray();
-            bool ok = missing.Length == 0;
-            string detail = ok
-                ? "Servizi critici attivi"
-                : $"Servizi non attivi: {string.Join(", ", missing)}";
+            string[] requiredServices = ["EventLog", "Schedule"];
+            string[] advisoryServices = ["W32Time"];
+            string[] missingRequired = requiredServices.Where(service => !ServiceControllerStatus(service)).ToArray();
+            string[] missingAdvisory = advisoryServices.Where(service => !ServiceControllerStatus(service)).ToArray();
+            bool ok = missingRequired.Length == 0;
+            string detail = missingRequired.Length > 0
+                ? $"Servizi critici non attivi: {string.Join(", ", missingRequired)}"
+                : missingAdvisory.Length > 0
+                    ? $"Servizi principali attivi | opzionali non attivi: {string.Join(", ", missingAdvisory)}"
+                    : "Servizi principali attivi";
             return new DiagnosticStepResult
             {
                 Title = "Servizi",
@@ -139,26 +144,34 @@ public sealed class DiagnosticService
             };
         });
 
-        await ExecuteStepAsync(92, "Eventi", "Analisi errori recenti di sistema.", 7, async () =>
+        await ExecuteStepAsync(92, "Eventi", "Analisi errori recenti di sistema.", 7, async ct =>
         {
             int count = CountRecentCriticalEvents();
             bool ok = count == 0;
-            string detail = ok ? "Nessun errore critico recente" : $"{count} eventi critici recenti rilevati";
+            string status = count >= 3 ? "ERRORE" : count > 0 ? "ATTENZIONE" : "OK";
+            string detail = count switch
+            {
+                0 => "Nessun errore critico recente",
+                <= 2 => $"{count} eventi critici recenti da controllare",
+                _ => $"{count} eventi critici recenti rilevati"
+            };
             return new DiagnosticStepResult
             {
                 Title = "Eventi",
                 Detail = detail,
-                Status = ok ? "OK" : "ATTENZIONE",
+                Status = status,
                 Success = ok
             };
         });
 
-        await ExecuteStepAsync(96, "Aggiornamenti", "Ricerca aggiornamenti disponibili.", 45, async () =>
+        await ExecuteStepAsync(96, "Aggiornamenti", "Ricerca aggiornamenti disponibili.", 45, async ct =>
         {
-            UpdateCheckResult result = await CheckWindowsUpdatesAsync(cancellationToken);
-            bool ok = result.AvailableCount == 0 && result.ServiceReady;
+            UpdateCheckResult result = await CheckWindowsUpdatesAsync(ct);
+            bool ok = result.Success && result.AvailableCount == 0 && result.ServiceReady;
             string detail = !result.ServiceReady
                 ? "Servizi aggiornamento da verificare"
+                : !result.Success
+                    ? "Controllo aggiornamenti non riuscito"
                 : result.AvailableCount == 0
                     ? "Nessun aggiornamento disponibile"
                     : $"{result.AvailableCount} aggiornamenti disponibili";
@@ -166,12 +179,24 @@ public sealed class DiagnosticService
             {
                 Title = "Aggiornamenti",
                 Detail = detail,
-                Status = ok ? "OK" : (result.ServiceReady ? "ATTENZIONE" : "ERRORE"),
+                Status = ok ? "OK" : "ATTENZIONE",
                 Success = ok
             };
         });
 
-        await ExecuteStepAsync(99, "Sensori", "Lettura temperature e sorgente.", 6, async () =>
+        await ExecuteStepAsync(98, "Riavvio", "Verifica riavvio richiesto dal sistema.", 5, async ct =>
+        {
+            RebootCheckResult reboot = GetRebootCheckResult();
+            return new DiagnosticStepResult
+            {
+                Title = "Riavvio",
+                Detail = reboot.Detail,
+                Status = reboot.IsPending ? "ATTENZIONE" : "OK",
+                Success = !reboot.IsPending
+            };
+        });
+
+        await ExecuteStepAsync(99, "Sensori", "Lettura temperature e sorgente.", 6, async ct =>
         {
             SystemSnapshot snapshot = _probeService.CaptureSnapshot();
             bool ok = snapshot.Temperatures.CpuCelsius.HasValue || snapshot.Temperatures.GpuCelsius.HasValue;
@@ -181,20 +206,33 @@ public sealed class DiagnosticService
 
         progress.Report((100, "Completato", "Controllo completo terminato."));
         await Task.Delay(StepRenderDelayMs, cancellationToken);
-        _logger.Write("Controllo automatico completato.");
+        _logger.Write($"Riepilogo controllo completo: OK={okCount}, Attenzione={warningCount}, Errore={errorCount}");
+        _logger.Write("Controllo completo completato.");
 
         async Task ExecuteStepAsync(
             int percent,
             string title,
             string detail,
             int timeoutSeconds,
-            Func<Task<DiagnosticStepResult>> action)
+            Func<CancellationToken, Task<DiagnosticStepResult>> action)
         {
             cancellationToken.ThrowIfCancellationRequested();
             progress.Report((percent, title, detail));
             _logger.Write($"Step diagnostica: {title} - {detail}");
             await Task.Delay(StepRenderDelayMs, cancellationToken);
             DiagnosticStepResult result = await RunStepSafeAsync(title, action, timeoutSeconds, cancellationToken);
+            switch (result.Status)
+            {
+                case "OK":
+                    okCount++;
+                    break;
+                case "ATTENZIONE":
+                    warningCount++;
+                    break;
+                default:
+                    errorCount++;
+                    break;
+            }
             onStep(result);
             _logger.Write($"Esito {title}: {result.Status} - {result.Detail}");
         }
@@ -260,15 +298,16 @@ public sealed class DiagnosticService
 
     private static async Task<DiagnosticStepResult> RunStepSafeAsync(
         string title,
-        Func<Task<DiagnosticStepResult>> action,
+        Func<CancellationToken, Task<DiagnosticStepResult>> action,
         int timeoutSeconds,
         CancellationToken cancellationToken)
     {
         try
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            Task<DiagnosticStepResult> actionTask = action();
-            Task delayTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), timeoutCts.Token);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+            Task<DiagnosticStepResult> actionTask = action(timeoutCts.Token);
+            Task delayTask = Task.Delay(Timeout.InfiniteTimeSpan, timeoutCts.Token);
             Task completed = await Task.WhenAny(actionTask, delayTask);
 
             if (completed == delayTask)
@@ -282,19 +321,29 @@ public sealed class DiagnosticService
                 };
             }
 
-            timeoutCts.Cancel();
             return await actionTask;
         }
         catch (OperationCanceledException)
         {
-            throw;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+
+            return new DiagnosticStepResult
+            {
+                Title = title,
+                Detail = $"Tempo massimo superato ({timeoutSeconds}s)",
+                Status = "ERRORE",
+                Success = false
+            };
         }
         catch (Exception ex)
         {
             return new DiagnosticStepResult
             {
                 Title = title,
-                Detail = ex.Message,
+                Detail = SecurityHelpers.ToSafeUserMessage(ex, "Errore durante l'esecuzione del controllo."),
                 Status = "ERRORE",
                 Success = false
             };
@@ -309,22 +358,18 @@ public sealed class DiagnosticService
         IEnumerable<string> warningDetails,
         string fallbackSuccessMessage,
         string fallbackWarningMessage,
-        int timeoutSeconds,
         CancellationToken cancellationToken)
     {
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
-
         ToolExecutionResult result = await CommandRunner.RunAsync(
             title,
             fileName,
             arguments,
-            cancellationToken: timeoutCts.Token);
+            cancellationToken: cancellationToken);
 
         string output = result.Output ?? string.Empty;
         bool warning = warningDetails.Any(detail => output.Contains(detail, StringComparison.OrdinalIgnoreCase));
         bool successByText = successDetails.Any(detail => output.Contains(detail, StringComparison.OrdinalIgnoreCase));
-        bool success = result.Success && !warning;
+        bool success = successByText || (result.Success && !warning);
 
         string detail = successByText
             ? fallbackSuccessMessage
@@ -348,7 +393,7 @@ public sealed class DiagnosticService
         bool serviceReady = ServiceExists("wuauserv") && ServiceExists("BITS");
         if (!serviceReady)
         {
-            return new UpdateCheckResult(false, 0);
+            return new UpdateCheckResult(false, 0, false);
         }
 
         ToolExecutionResult result = await CommandRunner.RunAsync(
@@ -357,12 +402,12 @@ public sealed class DiagnosticService
             "-NoProfile -ExecutionPolicy Bypass -Command \"$session = New-Object -ComObject Microsoft.Update.Session; $searcher = $session.CreateUpdateSearcher(); $r = $searcher.Search(\\\"IsInstalled=0 and Type='Software'\\\"); Write-Output $r.Updates.Count\"",
             cancellationToken: cancellationToken);
 
-        if (int.TryParse(result.Output.Trim(), out int count))
+        if (result.Success && int.TryParse(result.Output.Trim(), out int count))
         {
-            return new UpdateCheckResult(true, count);
+            return new UpdateCheckResult(true, count, true);
         }
 
-        return new UpdateCheckResult(true, 0);
+        return new UpdateCheckResult(true, 0, false);
     }
 
     private static async Task<DiagnosticStepResult> CheckAntivirusDefinitionsAsync(CancellationToken cancellationToken)
@@ -404,7 +449,56 @@ public sealed class DiagnosticService
         };
     }
 
-    private readonly record struct UpdateCheckResult(bool ServiceReady, int AvailableCount);
+    private readonly record struct UpdateCheckResult(bool ServiceReady, int AvailableCount, bool Success);
+
+    private static RebootCheckResult GetRebootCheckResult()
+    {
+        try
+        {
+            using var cbs = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending");
+            using var wu = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired");
+            using var updateExeVolatile = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Updates");
+            using var session = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager");
+
+            bool cbsPending = cbs is not null;
+            bool wuPending = wu is not null;
+            bool volatilePending = false;
+            object? updateExeValue = updateExeVolatile?.GetValue("UpdateExeVolatile");
+            if (updateExeValue is not null && int.TryParse(updateExeValue.ToString(), out int volatileNumber))
+            {
+                volatilePending = volatileNumber != 0;
+            }
+
+            string[]? pendingRename = session?.GetValue("PendingFileRenameOperations") as string[];
+            bool renamePending = pendingRename is { Length: > 0 };
+
+            if (cbsPending)
+            {
+                return new RebootCheckResult(true, "Riavvio richiesto dal component store");
+            }
+
+            if (wuPending)
+            {
+                return new RebootCheckResult(true, "Riavvio richiesto da Windows Update");
+            }
+
+            if (volatilePending)
+            {
+                return new RebootCheckResult(true, "Riavvio richiesto da installazione o aggiornamento in sospeso");
+            }
+
+            if (renamePending)
+            {
+                return new RebootCheckResult(false, "Nessun riavvio obbligatorio rilevato");
+            }
+
+            return new RebootCheckResult(false, "Nessun riavvio richiesto");
+        }
+        catch
+        {
+            return new RebootCheckResult(false, "Stato riavvio non determinato");
+        }
+    }
 
     public QuickStatusState EvaluateSystem(SystemSnapshot snapshot)
     {
@@ -525,6 +619,18 @@ public sealed class DiagnosticService
             Message = "Protezione Windows non attiva"
         };
     }
+
+    public QuickStatusState EvaluateReboot()
+    {
+        RebootCheckResult reboot = GetRebootCheckResult();
+        return new QuickStatusState
+        {
+            Level = reboot.IsPending ? QuickStatusLevel.Warning : QuickStatusLevel.Good,
+            Message = reboot.Detail
+        };
+    }
+
+    private readonly record struct RebootCheckResult(bool IsPending, string Detail);
 
     public QuickStatusState EvaluateSensors(SystemSnapshot snapshot)
     {

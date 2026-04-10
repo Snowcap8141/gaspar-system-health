@@ -56,7 +56,7 @@ public sealed class LibreHardwareMonitorBootstrapper
                     asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))?
                 .Url;
 
-            if (string.IsNullOrWhiteSpace(zipUrl))
+            if (string.IsNullOrWhiteSpace(zipUrl) || !SecurityHelpers.IsTrustedLibreHardwareMonitorUrl(zipUrl))
             {
                 return BootstrapResult.Failed("Pacchetto LibreHardwareMonitor non trovato nella release ufficiale.");
             }
@@ -77,7 +77,7 @@ public sealed class LibreHardwareMonitorBootstrapper
                     await response.Content.CopyToAsync(stream, cancellationToken);
                 }
 
-                ZipFile.ExtractToDirectory(zipPath, extractPath, overwriteFiles: true);
+                SecurityHelpers.ExtractZipSafely(zipPath, extractPath);
 
                 string sourceFolder = FindPackageFolder(extractPath);
                 if (!File.Exists(Path.Combine(sourceFolder, "LibreHardwareMonitorLib.dll")))
@@ -110,7 +110,7 @@ public sealed class LibreHardwareMonitorBootstrapper
         }
         catch (Exception ex)
         {
-            return BootstrapResult.Failed(ex.Message);
+            return BootstrapResult.Failed(SecurityHelpers.ToSafeUserMessage(ex, "Installazione sensori non riuscita."));
         }
         finally
         {

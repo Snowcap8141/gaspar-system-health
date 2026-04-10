@@ -27,7 +27,14 @@ public sealed class SessionLogger
         string line = $"[{DateTime.Now:HH:mm:ss}] {message}";
         lock (_sync)
         {
-            File.AppendAllText(SessionLogPath, line + Environment.NewLine, Encoding.UTF8);
+            try
+            {
+                File.AppendAllText(SessionLogPath, line + Environment.NewLine, Encoding.UTF8);
+            }
+            catch
+            {
+                // Logging must never terminate the app.
+            }
         }
     }
 }

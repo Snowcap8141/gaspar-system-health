@@ -517,6 +517,7 @@
                                 <Button x:Name="WindowsSecurityButton" Content="Sicurezza Windows" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="InstalledAppsButton" Content="App installate" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="QuickWindowsUpdateButton" Content="Impostazioni update" Style="{StaticResource ActionButtonStyle}" />
+                                <Button x:Name="FullSystemSpecsButton" Content="Specifiche complete" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="SystemInfoButton" Content="Info sistema" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="TopProcessesButton" Content="Processi attivi" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="CriticalEventsButton" Content="Eventi critici" Style="{StaticResource ActionButtonStyle}" />
@@ -579,6 +580,7 @@
                             </Grid.RowDefinitions>
                             <WrapPanel>
                                 <Button x:Name="WindowsUpdateCheckButton" Content="Controlla aggiornamenti" Style="{StaticResource ActionButtonStyle}" />
+                                <Button x:Name="InstallWindowsUpdateButton" Content="Installa aggiornamenti" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="WindowsUpdateHistoryButton" Content="Storico aggiornamenti" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="AntivirusDefinitionsButton" Content="Definizioni AV" Style="{StaticResource ActionButtonStyle}" />
                                 <Button x:Name="AntivirusUpdateButton" Content="Aggiorna definizioni AV" Style="{StaticResource ActionButtonStyle}" />

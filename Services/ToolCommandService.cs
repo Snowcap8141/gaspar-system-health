@@ -84,6 +84,66 @@ public sealed class ToolCommandService
         return RunPowerShellAsync("Controllo aggiornamenti", script, cancellationToken);
     }
 
+    public Task<ToolExecutionResult> InstallWindowsUpdatesAsync(CancellationToken cancellationToken = default)
+    {
+        string script = """
+        $session = New-Object -ComObject Microsoft.Update.Session
+        $searcher = $session.CreateUpdateSearcher()
+        $result = $searcher.Search("IsInstalled=0 and Type='Software'")
+
+        if ($result.Updates.Count -eq 0) {
+            "Nessun aggiornamento disponibile da installare."
+            return
+        }
+
+        $updatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl
+        foreach ($update in $result.Updates) {
+            if (-not $update.EulaAccepted) {
+                $update.AcceptEula()
+            }
+            [void]$updatesToInstall.Add($update)
+        }
+
+        "Aggiornamenti trovati: $($updatesToInstall.Count)"
+        ""
+        "Download in corso..."
+        $downloader = $session.CreateUpdateDownloader()
+        $downloader.Updates = $updatesToInstall
+        $downloadResult = $downloader.Download()
+        "Download result code: $($downloadResult.ResultCode)"
+        ""
+
+        $readyToInstall = New-Object -ComObject Microsoft.Update.UpdateColl
+        foreach ($update in $updatesToInstall) {
+            if ($update.IsDownloaded) {
+                [void]$readyToInstall.Add($update)
+            }
+        }
+
+        if ($readyToInstall.Count -eq 0) {
+            "Nessun aggiornamento scaricato correttamente."
+            return
+        }
+
+        "Installazione in corso..."
+        $installer = $session.CreateUpdateInstaller()
+        $installer.Updates = $readyToInstall
+        $installResult = $installer.Install()
+        ""
+        "Install result code: $($installResult.ResultCode)"
+        "Riavvio richiesto: $($installResult.RebootRequired)"
+        ""
+        "Dettaglio aggiornamenti:"
+        for ($i = 0; $i -lt $readyToInstall.Count; $i++) {
+            $u = $readyToInstall.Item($i)
+            $r = $installResult.GetUpdateResult($i)
+            "- $($u.Title) | ResultCode: $($r.ResultCode) | HResult: $($r.HResult)"
+        }
+        """;
+
+        return RunPowerShellAsync("Installa aggiornamenti", script, cancellationToken);
+    }
+
     public Task<ToolExecutionResult> GetWindowsUpdateHistoryAsync(CancellationToken cancellationToken = default)
     {
         string script = """
@@ -102,6 +162,26 @@ public sealed class ToolCommandService
     public Task<ToolExecutionResult> OpenWindowsUpdateAsync(CancellationToken cancellationToken = default)
     {
         return LaunchShellTargetAsync("Apri Windows Update", "ms-settings:windowsupdate");
+    }
+
+    public Task<ToolExecutionResult> OpenSystemSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        return LaunchShellTargetAsync("Apri impostazioni sistema", "ms-settings:about");
+    }
+
+    public Task<ToolExecutionResult> OpenNetworkSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        return LaunchShellTargetAsync("Apri impostazioni rete", "ms-settings:network");
+    }
+
+    public Task<ToolExecutionResult> OpenWindowsSecurityAsync(CancellationToken cancellationToken = default)
+    {
+        return LaunchShellTargetAsync("Apri Sicurezza Windows", "windowsdefender:");
+    }
+
+    public Task<ToolExecutionResult> OpenInstalledAppsSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        return LaunchShellTargetAsync("Apri app installate", "ms-settings:appsfeatures");
     }
 
     public Task<ToolExecutionResult> GetAntivirusDefinitionsStatusAsync(CancellationToken cancellationToken = default)
@@ -246,9 +326,9 @@ public sealed class ToolCommandService
             $pending += 'Windows Update RebootRequired'
         }
 
-        $session = Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -ErrorAction SilentlyContinue
-        if ($session.PendingFileRenameOperations) {
-            $pending += 'PendingFileRenameOperations'
+        $updateExe = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Updates' -Name 'UpdateExeVolatile' -ErrorAction SilentlyContinue
+        if ($null -ne $updateExe.UpdateExeVolatile -and [int]$updateExe.UpdateExeVolatile -ne 0) {
+            $pending += 'UpdateExeVolatile'
         }
 
         if ($pending.Count -eq 0) {
@@ -342,10 +422,35 @@ public sealed class ToolCommandService
     public Task<ToolExecutionResult> GetSmartStatusAsync(CancellationToken cancellationToken = default)
     {
         string script = """
-        Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictStatus -ErrorAction SilentlyContinue |
-            Select-Object InstanceName, PredictFailure, Reason |
-            Format-Table -Auto |
-            Out-String -Width 220
+        $smart = $null
+
+        if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
+            try {
+                $smart = Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictStatus -ErrorAction Stop
+            } catch {
+                $smart = $null
+            }
+        }
+
+        if (-not $smart -and (Get-Command Get-WmiObject -ErrorAction SilentlyContinue)) {
+            try {
+                $smart = Get-WmiObject -Namespace root\wmi -Class MSStorageDriver_FailurePredictStatus -ErrorAction Stop
+            } catch {
+                $smart = $null
+            }
+        }
+
+        if ($smart) {
+            $smart |
+                Select-Object InstanceName, PredictFailure, Reason |
+                Format-Table -Auto |
+                Out-String -Width 220
+        } else {
+            @(
+                "SMART non disponibile tramite provider WMI su questo sistema."
+                "Il controller disco o il driver storage potrebbero non esporre i dati SMART leggibili."
+            ) -join [Environment]::NewLine
+        }
         """;
 
         return RunPowerShellAsync("SMART", script, cancellationToken);
@@ -386,12 +491,24 @@ public sealed class ToolCommandService
         return CommandRunner.RunAsync(
             title,
             "powershell.exe",
-            $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}",
+            $"-NoProfile -EncodedCommand {encoded}",
             cancellationToken: cancellationToken);
     }
 
     private static Task<ToolExecutionResult> LaunchShellTargetAsync(string title, string target)
     {
+        if (!SecurityHelpers.IsAllowedShellTarget(target))
+        {
+            return Task.FromResult(new ToolExecutionResult
+            {
+                Title = title,
+                CommandLine = title,
+                Output = "Destinazione shell non consentita.",
+                ExitCode = 1,
+                Success = false
+            });
+        }
+
         var startInfo = new System.Diagnostics.ProcessStartInfo
         {
             FileName = target,
@@ -403,7 +520,7 @@ public sealed class ToolCommandService
         return Task.FromResult(new ToolExecutionResult
         {
             Title = title,
-            CommandLine = target,
+            CommandLine = title,
             Output = "Strumento aperto correttamente.",
             ExitCode = 0,
             Success = true
