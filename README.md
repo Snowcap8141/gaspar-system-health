@@ -2,6 +2,8 @@
 
 Desktop tool for Windows built with C# and WPF for diagnostics, system integrity checks, network analysis, updates, security checks, and hardware monitoring.
 
+![Dashboard Overview](screenshots/dashboard-overview.png)
+
 ## Features
 
 - compact dashboard with CPU, memory, disk, uptime, and temperatures
@@ -9,6 +11,8 @@ Desktop tool for Windows built with C# and WPF for diagnostics, system integrity
 - tools for network, firewall, updates, integrity, storage, and logs
 - antivirus definition status and Microsoft Defender quick scan
 - hardware sensor support through LibreHardwareMonitor
+
+![Tools Panel](screenshots/tools-panel.png)
 
 ## Requirements
 
@@ -19,6 +23,8 @@ Desktop tool for Windows built with C# and WPF for diagnostics, system integrity
 ## Temperature Sensors
 
 If LibreHardwareMonitor is not already present next to the executable, the app can try to download it automatically on first launch.
+
+![Quick Status](screenshots/quick-status.png)
 
 ## Project Structure
 
