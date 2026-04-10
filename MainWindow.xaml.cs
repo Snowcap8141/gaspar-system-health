@@ -69,6 +69,7 @@ public partial class MainWindow : Window
         WindowsSecurityButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenWindowsSecurityAsync);
         InstalledAppsButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenInstalledAppsSettingsAsync);
         QuickWindowsUpdateButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.OpenWindowsUpdateAsync);
+        FullSystemSpecsButton.Click += async (_, _) => await ShowFullSystemSpecsAsync();
         SystemInfoButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.GetSystemInfoAsync);
         TopProcessesButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.GetTopProcessesAsync);
         CriticalEventsButton.Click += async (_, _) => await RunToolAsync(SystemOutputTextBox, _toolService.GetCriticalEventsAsync);
@@ -91,6 +92,7 @@ public partial class MainWindow : Window
         FirewallStatusButton.Click += async (_, _) => await RunToolAsync(FirewallOutputTextBox, _toolService.GetFirewallStatusAsync);
         FirewallRulesButton.Click += async (_, _) => await RunToolAsync(FirewallOutputTextBox, _toolService.GetFirewallRulesAsync);
         WindowsUpdateCheckButton.Click += async (_, _) => await RunToolAsync(WindowsUpdateOutputTextBox, _toolService.CheckWindowsUpdatesAsync);
+        InstallWindowsUpdateButton.Click += async (_, _) => await RunToolAsync(WindowsUpdateOutputTextBox, _toolService.InstallWindowsUpdatesAsync);
         WindowsUpdateHistoryButton.Click += async (_, _) => await RunToolAsync(WindowsUpdateOutputTextBox, _toolService.GetWindowsUpdateHistoryAsync);
         AntivirusDefinitionsButton.Click += async (_, _) => await RunToolAsync(WindowsUpdateOutputTextBox, _toolService.GetAntivirusDefinitionsStatusAsync);
         AntivirusUpdateButton.Click += async (_, _) => await RunToolAsync(WindowsUpdateOutputTextBox, _toolService.UpdateAntivirusDefinitionsAsync);
@@ -133,7 +135,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            AppendLog($"Errore dashboard: {ex.Message}");
+            AppendLog($"Errore dashboard: {ex.GetType().Name} - {ex.Message}");
             FooterStatusText.Text = "Errore durante l'aggiornamento dashboard.";
         }
         finally
@@ -174,8 +176,8 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             SensorSourceText.Text = "LibreHardwareMonitor";
-            SensorNoteText.Text = $"Bootstrap sensori fallito: {ex.Message}";
-            AppendLog($"Bootstrap sensori eccezione: {ex.Message}");
+            SensorNoteText.Text = SecurityHelpers.ToSafeUserMessage(ex, "Bootstrap sensori non riuscito.");
+            AppendLog($"Bootstrap sensori eccezione: {ex.GetType().Name} - {ex.Message}");
         }
         finally
         {
@@ -261,8 +263,8 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             DiagnosticStatusText.Text = "Errore";
-            DiagnosticDetailText.Text = ex.Message;
-            AppendLog($"Errore controllo completo: {ex.Message}");
+            DiagnosticDetailText.Text = SecurityHelpers.ToSafeUserMessage(ex, "Controllo completo interrotto.");
+            AppendLog($"Errore controllo completo: {ex.GetType().Name} - {ex.Message}");
         }
         finally
         {
@@ -371,10 +373,52 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            targetTextBox.Text = ex.Message;
-            SetToolStatus("ERRORE", "Comando terminato con eccezione.", ex.Message, Brushes.OrangeRed, Brushes.White);
-            AppendLog($"Comando fallito: {ex.Message}");
+            string userMessage = SecurityHelpers.ToSafeUserMessage(ex, "Comando terminato con errore.");
+            targetTextBox.Text = userMessage;
+            SetToolStatus("ERRORE", "Comando terminato con eccezione.", userMessage, Brushes.OrangeRed, Brushes.White);
+            AppendLog($"Comando fallito: {ex.GetType().Name} - {ex.Message}");
             FooterStatusText.Text = "Comando terminato con errore.";
+        }
+        finally
+        {
+            _toolOperationRunning = false;
+            _activeOperationName = null;
+            SetButtonsEnabled(true);
+            _refreshTimer.Start();
+        }
+    }
+
+    private async Task ShowFullSystemSpecsAsync()
+    {
+        if (_diagnosticCts is not null || _toolOperationRunning)
+        {
+            return;
+        }
+
+        _toolOperationRunning = true;
+        _activeOperationName = "Specifiche complete";
+        _refreshTimer.Stop();
+        FooterStatusText.Text = "Raccolta specifiche complete...";
+        SystemOutputTextBox.Text = $"[{DateTime.Now:HH:mm:ss}] Raccolta specifiche complete..." + Environment.NewLine;
+        SetToolStatus("IN CORSO", "Raccolta specifiche di sistema...", "Specifiche complete", Brushes.DodgerBlue, Brushes.White);
+        AppendLog("Raccolta specifiche complete avviata.");
+        SetButtonsEnabled(false);
+
+        try
+        {
+            string report = await Task.Run(_probeService.BuildDetailedReport);
+            SystemOutputTextBox.Text = report;
+            SetToolStatus("OK", "Specifiche complete generate.", "Specifiche complete", Brushes.LimeGreen, Brushes.White);
+            AppendLog("Specifiche complete generate.");
+            FooterStatusText.Text = "Specifiche complete aggiornate.";
+        }
+        catch (Exception ex)
+        {
+            string userMessage = SecurityHelpers.ToSafeUserMessage(ex, "Raccolta specifiche non riuscita.");
+            SystemOutputTextBox.Text = userMessage;
+            SetToolStatus("ERRORE", "Errore durante la raccolta specifiche.", userMessage, Brushes.OrangeRed, Brushes.White);
+            AppendLog($"Specifiche complete fallite: {ex.GetType().Name} - {ex.Message}");
+            FooterStatusText.Text = "Errore durante la raccolta specifiche.";
         }
         finally
         {
@@ -394,6 +438,7 @@ public partial class MainWindow : Window
         WindowsSecurityButton.IsEnabled = isEnabled;
         InstalledAppsButton.IsEnabled = isEnabled;
         QuickWindowsUpdateButton.IsEnabled = isEnabled;
+        FullSystemSpecsButton.IsEnabled = isEnabled;
         SystemInfoButton.IsEnabled = isEnabled;
         TopProcessesButton.IsEnabled = isEnabled;
         CriticalEventsButton.IsEnabled = isEnabled;
@@ -416,6 +461,7 @@ public partial class MainWindow : Window
         FirewallStatusButton.IsEnabled = isEnabled;
         FirewallRulesButton.IsEnabled = isEnabled;
         WindowsUpdateCheckButton.IsEnabled = isEnabled;
+        InstallWindowsUpdateButton.IsEnabled = isEnabled;
         WindowsUpdateHistoryButton.IsEnabled = isEnabled;
         AntivirusDefinitionsButton.IsEnabled = isEnabled;
         AntivirusUpdateButton.IsEnabled = isEnabled;
