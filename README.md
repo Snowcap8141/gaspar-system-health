@@ -46,3 +46,12 @@ dotnet publish .\GasparSystemHealth.csproj -c Release -o .\publish
 ## Release
 
 The recommended way to distribute the app is through GitHub or GitLab releases with a packaged build attached as a zip file.
+
+## Third-Party Notice
+
+This project uses LibreHardwareMonitor for hardware sensor support.
+
+- LibreHardwareMonitor: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+- License: Mozilla Public License 2.0 (MPL-2.0)
+
+Please keep the related attribution and license files with the distributed package when LibreHardwareMonitor components are included.
