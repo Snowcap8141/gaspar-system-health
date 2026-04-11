@@ -399,7 +399,7 @@ public sealed class DiagnosticService
         ToolExecutionResult result = await CommandRunner.RunAsync(
             "Controllo aggiornamenti",
             "powershell.exe",
-            "-NoProfile -ExecutionPolicy Bypass -Command \"$session = New-Object -ComObject Microsoft.Update.Session; $searcher = $session.CreateUpdateSearcher(); $r = $searcher.Search(\\\"IsInstalled=0 and Type='Software'\\\"); Write-Output $r.Updates.Count\"",
+            "-NoProfile -Command \"$session = New-Object -ComObject Microsoft.Update.Session; $searcher = $session.CreateUpdateSearcher(); $r = $searcher.Search(\\\"IsInstalled=0 and Type='Software'\\\"); Write-Output $r.Updates.Count\"",
             cancellationToken: cancellationToken);
 
         if (result.Success && int.TryParse(result.Output.Trim(), out int count))
@@ -415,7 +415,7 @@ public sealed class DiagnosticService
         ToolExecutionResult result = await CommandRunner.RunAsync(
             "Definizioni antivirus",
             "powershell.exe",
-            "-NoProfile -ExecutionPolicy Bypass -Command \"if (Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue) { $s = Get-MpComputerStatus; $h = if ($s.AntivirusSignatureLastUpdated) { [math]::Round(((Get-Date)-$s.AntivirusSignatureLastUpdated).TotalHours,1) } else { 9999 }; Write-Output \\\"$h|$($s.AntivirusSignatureVersion)|$($s.RealTimeProtectionEnabled)\\\" } else { Write-Output 'NA|NA|False' }\"",
+            "-NoProfile -Command \"if (Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue) { $s = Get-MpComputerStatus; $h = if ($s.AntivirusSignatureLastUpdated) { [math]::Round(((Get-Date)-$s.AntivirusSignatureLastUpdated).TotalHours,1) } else { 9999 }; Write-Output \\\"$h|$($s.AntivirusSignatureVersion)|$($s.RealTimeProtectionEnabled)\\\" } else { Write-Output 'NA|NA|False' }\"",
             cancellationToken: cancellationToken);
 
         string[] parts = result.Output.Trim().Split('|');

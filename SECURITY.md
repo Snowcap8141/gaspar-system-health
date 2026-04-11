@@ -4,7 +4,7 @@
 
 Current maintained release line:
 
-- `v1.0.6`
+- `v1.0.7`
 
 ## Reporting a Security Issue
 
