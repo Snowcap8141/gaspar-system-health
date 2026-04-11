@@ -55,3 +55,17 @@ This project uses LibreHardwareMonitor for hardware sensor support.
 - License: Mozilla Public License 2.0 (MPL-2.0)
 
 Please keep the related attribution and license files with the distributed package when LibreHardwareMonitor components are included.
+
+# License
+
+Gaspar System Health source code is distributed under the Apache License 2.0.
+
+This project also uses third-party components, including LibreHardwareMonitor for hardware sensor support. LibreHardwareMonitor is distributed under the Mozilla Public License 2.0 (MPL-2.0).
+
+Relevant attribution and third-party licensing materials are included in:
+
+- `THIRD-PARTY-NOTICES.md`
+- `licenses/LibreHardwareMonitor-LICENSE.txt`
+- `licenses/LibreHardwareMonitor-THIRD-PARTY-NOTICES.txt`
+
+Gaspar System Health is built with Microsoft development tooling and Windows platform frameworks. Microsoft tools, SDKs, and platform components remain subject to their respective Microsoft terms and are not relicensed by this project.
